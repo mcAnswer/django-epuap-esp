@@ -6,11 +6,10 @@ from django.conf import settings
 from zeep import Client
 from zeep.xsd import valueobjects
 
-from epuapesp.envelope import EPuapSignature, EPuapOdpowiedzPull, DisorderPlugin
+from epuapesp.envelope import EPuapSignature, EPuapPullResponse
 from epuapesp.exceptions import EPuapException
 
-# logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
+logger = logging.getLogger()
 
 class EPuapGeneric:
     """Generic ePUAP service wrapper"""
@@ -25,7 +24,7 @@ class EPuapGeneric:
             digest_method=xmlsec.constants.TransformSha256,
             signature_method=xmlsec.constants.TransformRsaSha256,
         )
-        self.client = Client(self.wsdl, wsse=wsse, plugins=[DisorderPlugin()])
+        self.client = Client(self.wsdl, wsse=wsse)
 
     def _wrap_service(self, name: str, *args, **kwargs) -> valueobjects.CompoundValue:
         service = getattr(self.client.service, name)
@@ -46,6 +45,7 @@ class EPuapPull(EPuapGeneric):
 
     def count_awaiting_documents(self, subject, box_name, box_address):
         """Get a number of awaiting documents"""
+
         result = self._wrap_service(
             "oczekujaceDokumenty",
             podmiot=subject,
@@ -62,7 +62,7 @@ class EPuapPull(EPuapGeneric):
             nazwaSkrytki=box_name,
             adresSkrytki=box_address,
         )
-        return EPuapOdpowiedzPull(result)
+        return EPuapPullResponse(result)
 
     def acknowledge_receipt(self, subject, box_name, box_address, skrot):
         """Confirm completion of a document processing"""
@@ -116,7 +116,11 @@ class EPuap:
         )
         if not awaiting_documents:
             return None
-        return service.get_next_document(*settings.EPUAP_ESP)
+        return service.get_next_document(
+            settings.EPUAP_ESP_SUBJECT,
+            settings.EPUAP_ESP_BOX,
+            settings.EPUAP_ESP_ADDRESS,
+        )
 
     @classmethod
     def acknowledge(cls, sha256):
@@ -142,5 +146,5 @@ class EPuap:
 
 
 if __name__ == "__main__":
-    odpowiedz = EPuap.pull()
-    print(odpowiedz.sha256, odpowiedz.zawartosc)
+    response = EPuap.pull()
+    print(response.sha256, response.content)

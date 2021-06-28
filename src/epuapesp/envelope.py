@@ -1,7 +1,7 @@
 import base64
 import hashlib
 from lxml import etree
-from zeep import Plugin, ns
+from zeep import ns
 from zeep.wsse.signature import (
     BinarySignature,
     _make_sign_key,
@@ -64,23 +64,12 @@ class EPuapSignature(BinarySignature):
             },
         )
         ref.attrib["URI"] = "#" + ensure_id(bintok)
+        print(bintok, x509_data)
+        with open("x509_data.xml", "wb") as f:
+            x509_data.getroottree().write(f, pretty_print=True)
         bintok.text = x509_data.find(etree.QName(ns.DS, "X509Certificate")).text
         security.insert(0, bintok)
         x509_data.getparent().remove(x509_data)
-
-
-class DisorderPlugin(Plugin):
-    """Zeep plugin used to debugging purpose. Safe to remove if not referred by EPuapGeneric"""
-
-    def egress(self, envelope, http_headers, operation, binding_options):
-        with open("envelope.xml", "wb") as f:
-            envelope.getroottree().write(f, pretty_print=True)
-        return envelope, http_headers
-
-    def ingress(self, envelope, http_headers, operation):
-        with open("invelope.xml", "wb") as f:
-            envelope.getroottree().write(f, pretty_print=True)
-        return envelope, http_headers
 
 
 class EPuapParser:
@@ -117,11 +106,11 @@ class EPuapParser:
         return getattr(self.root, key)
 
 
-class EPuapOdpowiedzPull(EPuapParser):
+class EPuapPullResponse(EPuapParser):
     """Parser for OdpowiedzPull interface"""
 
     @property
-    def zawartosc(self):
+    def content(self):
         """Return result XML"""
         return self._parse_xml_element(self.dokument.zawartosc)
 

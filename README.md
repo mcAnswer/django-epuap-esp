@@ -22,7 +22,7 @@ To get `django-epuap-esp` please follow the steps below:
   ```python
   from epuapesp import epuap
   document = epuap.EPuap.pull()
-  #process document.zawartosc
+  #process document.content
   epuap.EPuap.acknowledge(document.sha256)
   ```
 
